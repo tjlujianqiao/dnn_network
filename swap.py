@@ -7,7 +7,7 @@ from torchvision.datasets.mnist import MNIST
 from PIL import Image
 # 超参数
 EPOCH = 10
-BATCH_SIZE = 100
+BATCH_SIZE = 1
 DOWNLOAD_MNIST = True   
 N_TEST_IMG = 10          
 __all__ = {
@@ -111,7 +111,7 @@ class DNN(t.nn.Module):
 
         self.dnn = t.nn.Sequential(
             t.nn.Linear(4*1,50),
-            #here 28*28 need to be modified
+            #here 4*1 need to be modified
             t.nn.Dropout(0.5),
             t.nn.ELU(),
             t.nn.Linear(50,25),
@@ -153,7 +153,7 @@ def train():
 
             model.train()# train model dropout used
             step += 1
-            b_x = x   # batch x, shape (batch, 28*28)
+            b_x = x   # batch x, shape (batch, 4)
             #print(b_x.shape)
             b_y = y
             if(use_gpu):
@@ -175,7 +175,7 @@ def train():
 
                 model.eval() # train model dropout not use
                 for (tx,ty) in testloader:
-                    t_x = tx   # batch x, shape (batch, 28*28)
+                    t_x = tx   # batch x, shape (batch, 4*1)
                     t_y = ty
                     if(use_gpu):
                         t_x = t_x.cuda()
@@ -186,9 +186,9 @@ def train():
                     else:
                         acc = (np.argmax(t_out.data.numpy(),axis=1) == t_y.data.numpy())
 
-                    print(time.time() - ts ,np.sum(acc)/1000)
+                    print(time.time() - ts ,np.sum(acc)/50)
                     ts = time.time()
-                    break#只测试前1000个
+                    break
             
 
 
@@ -203,14 +203,14 @@ def train():
     net.cpu()
     net.eval()
     for (tx,ty) in testloader:
-        t_x = tx   # batch x, shape (batch, 28*28)
+        t_x = tx   # batch x, shape (batch, 4*1)
         t_y = ty
 
         t_out = net(t_x)
         #acc = (np.argmax(t_out.data.CPU().numpy(),axis=1) == t_y.data.CPU().numpy())
         acc = (np.argmax(t_out.data.numpy(),axis=1) == t_y.data.numpy())
 
-        print(np.sum(acc)/1000)
+        print(np.sum(acc)/50)
 
 if __name__ == "__main__":
     train()
