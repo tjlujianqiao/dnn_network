@@ -2,30 +2,91 @@ import torch as t
 import torchvision as tv
 import numpy as np
 import time
-
-
+import pandas as pd
+from torchvision.datasets.mnist import MNIST
+from PIL import Image
 # 超参数
 EPOCH = 10
 BATCH_SIZE = 100
-DOWNLOAD_MNIST = False   # 下过数据的话, 就可以设置成 False
-N_TEST_IMG = 10          # 到时候显示 5张图片看效果, 如上图一
+DOWNLOAD_MNIST = True   
+N_TEST_IMG = 10          
+__all__ = {
+    '无': 0,
+    '轻微': 1,
+    '中级': 2,
+    '强烈': 3,
+    '中等': 2,
+}
 
 
+
+class Rockstone(MNIST):
+    def __init__(self, root, train=True, transform=None, target_transform=None,
+                 download=False):
+        super(MNIST, self).__init__(root, transform=transform,
+                                    target_transform=target_transform)
+        self.train = train  # training set or test set
+
+        if self.train:
+            data_file = './data/training_data.xlsx'
+        else:
+            data_file = './data/testing_data.xlsx'
+        
+        self.data, self.targets = self.getrawdata(data_file)
+    def getrawdata(self, data_file):
+        df = pd.read_excel(data_file)
+        return t.tensor(df.loc[:, ['sig1','sig2','sig3','sig4']].values.tolist(), dtype=t.float32), np.array(df.loc[:,'岩爆等级'].values.tolist())
+    def __getitem__(self, index):
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (image, target) where target is index of the target class.
+        """
+        
+        img, target = self.data[index], self.targets[index]
+        
+        # doing this so that it is consistent with all other datasets
+        # to return a PIL Image
+      
+        target = __all__[target]
+
+        return img, target
+
+    def __len__(self):
+        return len(self.data)
+
+    @property
+    def raw_folder(self):
+        return os.path.join(self.root, self.__class__.__name__, 'raw')
+
+    @property
+    def processed_folder(self):
+        return os.path.join(self.root, self.__class__.__name__, 'processed')
+
+    @property
+    def class_to_idx(self):
+        return {_class: i for i, _class in enumerate(self.classes)}
+
+    def _check_exists(self):
+        return (os.path.exists(os.path.join(self.processed_folder,
+                                            self.training_file)) and
+                os.path.exists(os.path.join(self.processed_folder,
+                                            self.test_file)))
 
 class DNN(t.nn.Module):
+    
     def __init__(self):
         super(DNN, self).__init__()
-        import pdb
-        pdb.set_trace()
-        train_data = tv.datasets.FashionMNIST(
+        train_data = Rockstone( 
         root="./fashionmnist/",
         train=True,
         transform=tv.transforms.ToTensor(),
-        download=DOWNLOAD_MNIST
-        # here I need to figure out the type of the train_data
-        )
+        download=DOWNLOAD_MNIST)
+        
 
-        test_data = tv.datasets.FashionMNIST(
+        test_data = Rockstone(
         root="./fashionmnist/",
         train=False,
         transform=tv.transforms.ToTensor(),
@@ -34,7 +95,7 @@ class DNN(t.nn.Module):
 
         #print(test_data)
 
-        
+
         # Data Loader for easy mini-batch return in training, the image batch need to be modified
         self.train_loader = t.utils.data.DataLoader(
             dataset=train_data, 
@@ -49,14 +110,14 @@ class DNN(t.nn.Module):
             
 
         self.dnn = t.nn.Sequential(
-            t.nn.Linear(28*28,512),
+            t.nn.Linear(4*1,50),
             #here 28*28 need to be modified
             t.nn.Dropout(0.5),
             t.nn.ELU(),
-            t.nn.Linear(512,128),
+            t.nn.Linear(50,25),
             t.nn.Dropout(0.5),
             t.nn.ELU(),
-            t.nn.Linear(128,10),
+            t.nn.Linear(25,10),
         )
 
         self.lr = 0.001
@@ -65,11 +126,10 @@ class DNN(t.nn.Module):
 
     def forward(self,x):
 
-        nn1 = x.view(-1,28*28)
+        nn1 = x.view(-1,4*1)
         #also need to  
         #print(nn1.shape)
-        import pdb
-        pdb.set_trace()
+
         out = self.dnn(nn1)
         #print(out.shape)
         return(out)
@@ -100,16 +160,19 @@ def train():
                 b_x = b_x.cuda()
                 b_y = b_y.cuda()
             out = model(b_x)
+
             losses = loss(out,b_y)
             opt.zero_grad()
             losses.backward()
             opt.step()
-            if(step%100 == 0):
+            import pdb
+            pdb.set_trace()            
+            if(step%5 == 0):
                 if(use_gpu):
                     print(e,step,losses.data.cpu().numpy())
                 else:
                     print(e,step,losses.data.numpy())
-                
+
                 model.eval() # train model dropout not use
                 for (tx,ty) in testloader:
                     t_x = tx   # batch x, shape (batch, 28*28)
