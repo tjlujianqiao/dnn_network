@@ -5,7 +5,10 @@ import time
 import pandas as pd
 from torchvision.datasets.mnist import MNIST
 from PIL import Image
+import matplotlib.pyplot as plt
+
 # 超参数
+
 EPOCH = 10
 BATCH_SIZE = 1
 DOWNLOAD_MNIST = True   
@@ -18,7 +21,7 @@ __all__ = {
     '中等': 2,
 }
 
-
+error =[]
 
 class Rockstone(MNIST):
     def __init__(self, root, train=True, transform=None, target_transform=None,
@@ -117,7 +120,7 @@ class DNN(t.nn.Module):
             t.nn.Linear(50,25),
             t.nn.Dropout(0.5),
             t.nn.ELU(),
-            t.nn.Linear(25,10),
+            t.nn.Linear(25,4),
         )
 
         self.lr = 0.001
@@ -165,9 +168,9 @@ def train():
             opt.zero_grad()
             losses.backward()
             opt.step()
-            import pdb
-            pdb.set_trace()            
+        
             if(step%5 == 0):
+ 
                 if(use_gpu):
                     print(e,step,losses.data.cpu().numpy())
                 else:
@@ -181,12 +184,13 @@ def train():
                         t_x = t_x.cuda()
                         t_y = t_y.cuda()
                     t_out = model(t_x)
+
                     if(use_gpu):
                         acc = (np.argmax(t_out.data.cpu().numpy(),axis=1) == t_y.data.cpu().numpy())
                     else:
                         acc = (np.argmax(t_out.data.numpy(),axis=1) == t_y.data.numpy())
-
-                    print(time.time() - ts ,np.sum(acc)/50)
+                    error.append(np.sum(acc)/5)
+                    print(time.time() - ts ,np.sum(acc)/6)
                     ts = time.time()
                     break
             
@@ -209,8 +213,11 @@ def train():
         t_out = net(t_x)
         #acc = (np.argmax(t_out.data.CPU().numpy(),axis=1) == t_y.data.CPU().numpy())
         acc = (np.argmax(t_out.data.numpy(),axis=1) == t_y.data.numpy())
-
-        print(np.sum(acc)/50)
-
+        print('111')
+        print(np.sum(acc)/6)
+        print(error)
+        fig,ax = plt.subplots(1,1,sharex = True,figsize=(6,5))
+        ax.plot(range(1,len(error)+1),error)
+        fig.savefig('1.png',format = 'png')
 if __name__ == "__main__":
     train()
